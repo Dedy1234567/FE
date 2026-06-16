@@ -1,8 +1,7 @@
-import { useEffect, useState, Suspense, lazy } from "react";
+import { useEffect, useState, Suspense, lazy, useCallback, useMemo } from "react";
 import {
   CalendarDays, Search, RefreshCw, CheckCircle2,
-  XCircle, Clock, Hotel, BedDouble,
-  Circle,
+  XCircle, Hotel, BedDouble, ChevronLeft, ChevronRight
 } from "lucide-react";
 import {
   getAllHotelBookings,
@@ -13,17 +12,9 @@ import {
 // ─── Lazy ─────────────────────────────────────────────────────────────────────
 const ConfirmModal = lazy(() => Promise.resolve({ default: _ConfirmModal }));
 
-// ─── Status config ────────────────────────────────────────────────────────────
-const STATUS = {
-  confirmed:  { label: "Confirmed",  bg: "bg-emerald-50", text: "text-emerald-600", border: "border-emerald-200", dot: "bg-emerald-400" },
-  pending:    { label: "Pending",    bg: "bg-amber-50",   text: "text-amber-600",   border: "border-amber-200",   dot: "bg-amber-400"   },
-  cancelled:  { label: "Cancelled", bg: "bg-slate-100",  text: "text-slate-500",   border: "border-slate-200",   dot: "bg-slate-400"   },
-  checked_in: { label: "Checked In",bg: "bg-blue-50",    text: "text-blue-600",    border: "border-blue-200",    dot: "bg-blue-400"    },
-  completed:  { label: "Completed", bg: "bg-violet-50",  text: "text-violet-600",  border: "border-violet-200",  dot: "bg-violet-400"  },
-};
-
-function StatusBadge({ status }) {
-  const s = STATUS[status] || STATUS.pending;
+// ─── Status Badge Component ───────────────────────────────────────────────────
+function StatusBadge({ status, statusConfig }) {
+  const s = statusConfig[status] || statusConfig.pending;
   return (
     <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border ${s.bg} ${s.text} ${s.border}`}>
       <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
@@ -65,7 +56,7 @@ function TableSkeleton() {
   );
 }
 
-// ─── _ConfirmModal ────────────────────────────────────────────────────────────
+// ─── Confirm Modal ────────────────────────────────────────────────────────────
 function _ConfirmModal({ modal, actionLoading, onConfirm, onClose }) {
   if (!modal) return null;
   const isCancel = modal.type === "cancel";
@@ -104,7 +95,7 @@ function _ConfirmModal({ modal, actionLoading, onConfirm, onClose }) {
   );
 }
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
+// ─── Main Component ───────────────────────────────────────────────────────────
 function AdminHotelBookings() {
   const [bookings,      setBookings]      = useState([]);
   const [loading,       setLoading]       = useState(true);
@@ -114,25 +105,58 @@ function AdminHotelBookings() {
   const [actionLoading, setActionLoading] = useState(false);
   const [toast,         setToast]         = useState(null);
 
-  const showToast = (msg, type = "success") => {
+  // Pagination States
+  const [currentPage,   setCurrentPage]   = useState(1);
+  const [totalPages,    setTotalPages]    = useState(1);
+  const [totalData,     setTotalData]     = useState(0);
+  const limit = 10;
+
+  // ⭐ IMPLEMENTASI USEMEMO: Menyimpan objek config agar tidak dialokasikan ulang di memori
+  const STATUS_CONFIG = useMemo(() => ({
+    confirmed:  { label: "Confirmed",  bg: "bg-emerald-50", text: "text-emerald-600", border: "border-emerald-200", dot: "bg-emerald-400" },
+    pending:    { label: "Pending",    bg: "bg-amber-50",   text: "text-amber-600",   border: "border-amber-200",   dot: "bg-amber-400"   },
+    cancelled:  { label: "Cancelled", bg: "bg-slate-100",  text: "text-slate-500",   border: "border-slate-200",   dot: "bg-slate-400"   },
+    checked_in: { label: "Checked In", bg: "bg-blue-50",    text: "text-blue-600",    border: "border-blue-200",    dot: "bg-blue-400"    },
+    completed:  { label: "Completed", bg: "bg-violet-50",  text: "text-violet-600",  border: "border-violet-200",  dot: "bg-violet-400"  },
+  }), []);
+
+  // ⭐ IMPLEMENTASI USECALLBACK 1: Toast Alerts
+  const showToast = useCallback((msg, type = "success") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3000);
-  };
+  }, []);
 
-  const loadBookings = async () => {
+  // ⭐ IMPLEMENTASI USECALLBACK 2: API Handler Fetching
+  const loadBookings = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await getAllHotelBookings();
-      setBookings(res.data);
+      const res = await getAllHotelBookings({
+        page: currentPage,
+        limit,
+        search,
+        status: statusFilter
+      });
+      
+      setBookings(res.data?.data || []);
+      setTotalPages(res.data?.pagination?.totalPages || 1);
+      setTotalData(res.data?.pagination?.totalData || 0);
     } catch (err) {
       console.error(err);
+      showToast("Gagal memuat data booking", "error");
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, search, statusFilter, showToast]);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { loadBookings(); }, []);
+  useEffect(() => { 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadBookings(); 
+  }, [loadBookings]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCurrentPage(1);
+  }, [search, statusFilter]);
 
   const handleAction = async () => {
     if (!modal) return;
@@ -152,21 +176,6 @@ function AdminHotelBookings() {
     } finally {
       setActionLoading(false);
     }
-  };
-
-  const filtered = bookings
-    .filter((b) =>
-      [b.fullname, b.email, b.hotel_name, b.room_name]
-        .some((v) => v?.toLowerCase().includes(search.toLowerCase()))
-    )
-    .filter((b) => statusFilter === "all" || b.status === statusFilter);
-
-  const stats = {
-    total:     bookings.length,
-    confirmed: bookings.filter((b) => b.status === "confirmed").length,
-    pending:   bookings.filter((b) => b.status === "pending").length,
-    completed: bookings.filter((b) => b.status === "completed").length,
-    cancelled: bookings.filter((b) => b.status === "cancelled").length,
   };
 
   const fmt = (d) => d
@@ -218,47 +227,49 @@ function AdminHotelBookings() {
           </button>
         </div>
 
-        {/* ── Stats ── */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
-          {[
-            { label: "Total",     value: stats.total,     icon: BedDouble,     accent: "text-indigo-600",  bg: "bg-indigo-50",  key: "all"       },
-            { label: "Confirmed", value: stats.confirmed, icon: CheckCircle2,  accent: "text-emerald-600", bg: "bg-emerald-50", key: "confirmed" },
-            { label: "Pending",   value: stats.pending,   icon: Clock,         accent: "text-amber-600",   bg: "bg-amber-50",   key: "pending"   },
-            { label: "Completed", value: stats.completed, icon: Circle,        accent: "text-violet-600",  bg: "bg-violet-50",  key: "completed" },
-            { label: "Cancelled", value: stats.cancelled, icon: XCircle,       accent: "text-rose-500",    bg: "bg-rose-50",    key: "cancelled" },
-          ].map(({ label, value, icon: Icon, accent, bg, key }) => (
-            <button key={key} onClick={() => setStatusFilter(key)}
-              className={`text-left bg-white rounded-2xl border shadow-sm p-4 flex items-center gap-3 transition-all hover:shadow-md
-                ${statusFilter === key ? "border-teal-300 ring-1 ring-teal-200" : "border-slate-100"}`}>
-              <div className={`w-10 h-10 rounded-xl ${bg} flex items-center justify-center shrink-0`}>
-                <Icon size={17} className={accent} />
-              </div>
-              <div>
-                <p className={`text-lg font-bold tabular-nums ${accent} leading-none`}>{value}</p>
-                <p className="text-xs text-slate-400 mt-0.5">{label}</p>
-              </div>
-            </button>
-          ))}
-        </div>
-
-        {/* ── Table card ── */}
+        {/* ── Table Card ── */}
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
 
-          {/* Toolbar */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-6 py-4 border-b border-slate-100">
+          {/* ── Toolbar dengan Dropdown List Sesuai Request Gambar ── */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-6 py-4 border-b border-slate-100">
             <div>
               <h2 className="font-semibold text-slate-700 text-sm">Daftar Booking</h2>
-              <p className="text-xs text-slate-400 mt-0.5">{filtered.length} dari {bookings.length} data</p>
+              <p className="text-xs text-slate-400 mt-0.5">Total data ditemukan: {totalData} baris</p>
             </div>
-            <div className="relative w-full sm:w-72">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Cari nama, hotel, kamar, email..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-300 text-slate-700 placeholder-slate-400 transition"
-              />
+            
+            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto items-center">
+              {/* Dropdown Select List Status */}
+              <div className="relative w-full sm:w-44">
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="w-full px-4 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-300 text-slate-600 font-medium appearance-none cursor-pointer shadow-2xs"
+                  style={{ 
+                    backgroundImage: 'url("data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%2364748b\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><polyline points=\'6 9 12 15 18 9\'></polyline></svg>")', 
+                    backgroundPosition: 'right 14px center', 
+                    backgroundSize: '14px', 
+                    backgroundRepeat: 'no-repeat' 
+                  }}
+                >
+                  <option value="all">Semua Status</option>
+                  <option value="pending">Pending</option>
+                  <option value="confirmed">Confirmed</option>
+                  <option value="completed">Selesai</option>
+                  <option value="cancelled">Dibatalkan</option>
+                </select>
+              </div>
+
+              {/* Search Input Bar */}
+              <div className="relative w-full sm:w-64">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Cari nama, hotel, kamar, email..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-300 text-slate-700 placeholder-slate-400 transition shadow-2xs"
+                />
+              </div>
             </div>
           </div>
 
@@ -275,7 +286,7 @@ function AdminHotelBookings() {
               <tbody className="divide-y divide-slate-50">
                 {loading ? (
                   <TableSkeleton />
-                ) : filtered.length === 0 ? (
+                ) : bookings.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="text-center py-20">
                       <div className="flex flex-col items-center gap-3">
@@ -290,7 +301,7 @@ function AdminHotelBookings() {
                     </td>
                   </tr>
                 ) : (
-                  filtered.map((b, idx) => (
+                  bookings.map((b, idx) => (
                     <tr key={b.id}
                       className={`hover:bg-teal-50/30 transition-colors ${idx % 2 === 0 ? "bg-white" : "bg-slate-50/20"}`}>
 
@@ -302,7 +313,7 @@ function AdminHotelBookings() {
                       {/* Tamu */}
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-full bg-linear-to-br from-teal-400 to-indigo-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-teal-400 to-indigo-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
                             {b.fullname?.[0]?.toUpperCase() ?? "?"}
                           </div>
                           <div>
@@ -346,7 +357,7 @@ function AdminHotelBookings() {
 
                       {/* Status */}
                       <td className="px-5 py-3.5">
-                        <StatusBadge status={b.status} />
+                        <StatusBadge status={b.status} statusConfig={STATUS_CONFIG} />
                       </td>
 
                       {/* Aksi */}
@@ -376,10 +387,49 @@ function AdminHotelBookings() {
             </table>
           </div>
 
-          {/* Footer */}
-          {!loading && filtered.length > 0 && (
-            <div className="px-6 py-3 border-t border-slate-100 text-xs text-slate-400">
-              Menampilkan {filtered.length} dari {bookings.length} booking
+          {/* ── Pagination Footer Controls ── */}
+          {!loading && totalData > 0 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t border-slate-100 bg-slate-50/50">
+              <div className="text-xs text-slate-500 text-center sm:text-left">
+                Menampilkan <span className="font-semibold text-slate-700">{bookings.length}</span> data dari total <span className="font-semibold text-slate-700">{totalData}</span> data (Halaman {currentPage} dari {totalPages})
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="p-2 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-40"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                
+                <div className="flex items-center gap-1">
+                  {[...Array(totalPages)].map((_, index) => {
+                    const pageNum = index + 1;
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => setCurrentPage(pageNum)}
+                        className={`w-8 h-8 rounded-xl text-xs font-semibold transition-all ${
+                          currentPage === pageNum
+                            ? "bg-teal-600 text-white shadow-sm"
+                            : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="p-2 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-40"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
             </div>
           )}
         </div>

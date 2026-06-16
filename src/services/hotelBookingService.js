@@ -1,7 +1,9 @@
 import api from "./api";
 
-export const getAllHotelBookings = () => {
-  return api.get("/hotel-bookings");
+export const getAllHotelBookings = async ({ page, limit, search, status }) => {
+  return api.get("/hotel-bookings", {
+    params: { page, limit, search, status }
+  });
 };
 
 export const cancelHotelBooking = (id) => {

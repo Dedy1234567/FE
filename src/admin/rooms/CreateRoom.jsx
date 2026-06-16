@@ -11,23 +11,22 @@ import {
   ChevronLeft,
   Save,
   Loader2,
+  ImagePlus,
 } from "lucide-react";
 
-import MainLayout from "../../layouts/MainLayout";
 import { createRoom } from "../../services/roomService";
-import { getHotels } from "../../services/hotelService"; // sesuaikan path
+import { getHotels } from "../../services/hotelService";
 
+// Helper Component untuk Form Label & Error
 function FormField({ label, icon: Icon, error, children }) {
   return (
-    <div>
-      <label className="block text-sm font-medium text-slate-600 mb-1.5">
-        <span className="flex items-center gap-1.5">
-          <Icon size={14} className="text-indigo-400" />
-          {label}
-        </span>
+    <div className="space-y-1.5">
+      <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+        <Icon size={16} className="text-slate-400" />
+        {label}
       </label>
       {children}
-      {error && <p className="mt-1 text-xs text-rose-500">{error}</p>}
+      {error && <p className="text-xs font-medium text-rose-500 animate-in fade-in slide-in-from-top-1">{error}</p>}
     </div>
   );
 }
@@ -36,6 +35,7 @@ function CreateRoom() {
   const navigate = useNavigate();
   const [hotels, setHotels] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [fetchingHotels, setFetchingHotels] = useState(true);
   const [errors, setErrors] = useState({});
 
   const [form, setForm] = useState({
@@ -54,7 +54,9 @@ function CreateRoom() {
         const res = await getHotels();
         setHotels(res.data);
       } catch (err) {
-        console.log(err);
+        console.error("Gagal memuat daftar hotel", err);
+      } finally {
+        setFetchingHotels(false);
       }
     };
     loadHotels();
@@ -62,12 +64,11 @@ function CreateRoom() {
 
   const validate = () => {
     const e = {};
-    if (!form.hotel_id) e.hotel_id = "Pilih hotel terlebih dahulu";
-    if (!form.room_name.trim()) e.room_name = "Nama kamar wajib diisi";
+    if (!form.hotel_id) e.hotel_id = "Silakan pilih hotel mitra";
+    if (!form.room_name.trim()) e.room_name = "Nama kamar tidak boleh kosong";
     if (!form.price || Number(form.price) <= 0) e.price = "Harga harus lebih dari 0";
-    if (!form.capacity || Number(form.capacity) <= 0) e.capacity = "Kapasitas harus lebih dari 0";
-    if (!form.total_rooms || Number(form.total_rooms) <= 0)
-      e.total_rooms = "Jumlah unit harus lebih dari 0";
+    if (!form.capacity || Number(form.capacity) <= 0) e.capacity = "Kapasitas minimal 1 tamu";
+    if (!form.total_rooms || Number(form.total_rooms) <= 0) e.total_rooms = "Jumlah unit minimal 1";
     return e;
   };
 
@@ -96,176 +97,200 @@ function CreateRoom() {
   };
 
   const inputClass = (field) =>
-    `w-full px-4 py-2.5 rounded-xl border text-sm text-slate-700 placeholder-slate-300 focus:outline-none focus:ring-2 transition ${
+    `w-full px-4 py-2.5 rounded-xl border text-sm transition-all outline-none focus:ring-2 ${
       errors[field]
-        ? "border-rose-300 focus:ring-rose-200 bg-rose-50"
-        : "border-slate-200 focus:ring-indigo-200 bg-white"
+        ? "border-rose-300 focus:ring-rose-100 bg-rose-50 text-rose-900"
+        : "border-slate-200 focus:border-indigo-500 focus:ring-indigo-50 bg-white text-slate-700"
     }`;
 
   return (
-    <MainLayout>
-      {/* Header */}
-      <div className="mb-8">
-        <button
-          onClick={() => navigate("/admin/rooms")}
-          className="inline-flex items-center gap-1.5 text-slate-400 hover:text-indigo-600 text-sm mb-4 transition"
-        >
-          <ChevronLeft size={16} />
-          Kembali ke Daftar Kamar
-        </button>
-        <h1 className="text-3xl font-bold text-slate-800 tracking-tight">Tambah Kamar Baru</h1>
-        <p className="text-slate-400 text-sm mt-1">Isi detail informasi kamar hotel</p>
-      </div>
+    <div className="flex min-h-screen bg-[#f8fafc]">
+      {/* Jika ada Sidebar, un-comment di bawah ini */}
+      {/* <AdminSidebar /> */}
 
-      {/* Form Card */}
-      <div className="max-w-2xl">
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Card 1 – Info Utama */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 space-y-5">
-            <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider pb-1 border-b border-slate-100">
-              Informasi Utama
-            </h2>
-
-            <FormField label="Hotel" icon={Hotel} error={errors.hotel_id}>
-              <select
-                name="hotel_id"
-                value={form.hotel_id}
-                onChange={handleChange}
-                className={inputClass("hotel_id")}
-              >
-                <option value="">-- Pilih Hotel --</option>
-                {hotels.map((h) => (
-                  <option key={h.id} value={h.id}>
-                    {h.name}
-                  </option>
-                ))}
-              </select>
-            </FormField>
-
-            <FormField label="Nama Kamar" icon={BedDouble} error={errors.room_name}>
-              <input
-                type="text"
-                name="room_name"
-                value={form.room_name}
-                onChange={handleChange}
-                placeholder="cth. Deluxe King Room"
-                className={inputClass("room_name")}
-              />
-            </FormField>
+      <main className="flex-1 p-6 md:p-10 max-w-5xl mx-auto w-full">
+        {/* Breadcrumb & Title Area */}
+        <header className="mb-10">
+          <button
+            onClick={() => navigate("/admin/rooms")}
+            className="group flex items-center gap-1 text-slate-500 hover:text-indigo-600 font-medium text-sm mb-3 transition-colors"
+          >
+            <ChevronLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
+            Kembali ke Inventori Kamar
+          </button>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Konfigurasi Kamar</h1>
+              <p className="text-slate-500 mt-1">Daftarkan tipe kamar baru untuk hotel mitra Anda.</p>
+            </div>
           </div>
+        </header>
 
-          {/* Card 2 – Harga & Kapasitas */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 space-y-5">
-            <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider pb-1 border-b border-slate-100">
-              Harga & Kapasitas
-            </h2>
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          
+          {/* Kolom Kiri: Form Fields */}
+          <div className="lg:col-span-2 space-y-6">
+            
+            {/* Seksi 1: Lokasi & Nama */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 space-y-6">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600">
+                  <Hotel size={20} />
+                </div>
+                <h2 className="text-lg font-bold text-slate-800">Informasi Dasar</h2>
+              </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-              <FormField label="Harga / Malam (Rp)" icon={DollarSign} error={errors.price}>
-                <input
-                  type="number"
-                  name="price"
-                  value={form.price}
+              <FormField label="Pilih Hotel Mitra" icon={Hotel} error={errors.hotel_id}>
+                <select
+                  name="hotel_id"
+                  value={form.hotel_id}
                   onChange={handleChange}
-                  min="0"
-                  placeholder="500000"
-                  className={inputClass("price")}
-                />
+                  disabled={fetchingHotels}
+                  className={inputClass("hotel_id")}
+                >
+                  <option value="">{fetchingHotels ? "Memuat hotel..." : "-- Pilih Properti --"}</option>
+                  {hotels.map((h) => (
+                    <option key={h.id} value={h.id}>{h.name}</option>
+                  ))}
+                </select>
               </FormField>
 
-              <FormField label="Kapasitas Tamu" icon={Users} error={errors.capacity}>
+              <FormField label="Nama/Tipe Kamar" icon={BedDouble} error={errors.room_name}>
                 <input
-                  type="number"
-                  name="capacity"
-                  value={form.capacity}
+                  type="text"
+                  name="room_name"
+                  value={form.room_name}
                   onChange={handleChange}
-                  min="1"
-                  placeholder="2"
-                  className={inputClass("capacity")}
+                  placeholder="Contoh: Executive Suite Sea View"
+                  className={inputClass("room_name")}
                 />
               </FormField>
+            </div>
 
-              <FormField label="Jumlah Unit" icon={Hash} error={errors.total_rooms}>
-                <input
-                  type="number"
-                  name="total_rooms"
-                  value={form.total_rooms}
+            {/* Seksi 2: Harga & Kapasitas */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 space-y-6">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 bg-emerald-50 rounded-lg text-emerald-600">
+                  <DollarSign size={20} />
+                </div>
+                <h2 className="text-lg font-bold text-slate-800">Detail Harga & Stok</h2>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField label="Harga per Malam (Rp)" icon={DollarSign} error={errors.price}>
+                  <input
+                    type="number"
+                    name="price"
+                    value={form.price}
+                    onChange={handleChange}
+                    placeholder="0"
+                    className={inputClass("price")}
+                  />
+                </FormField>
+
+                <FormField label="Kapasitas (Orang)" icon={Users} error={errors.capacity}>
+                  <input
+                    type="number"
+                    name="capacity"
+                    value={form.capacity}
+                    onChange={handleChange}
+                    placeholder="2"
+                    className={inputClass("capacity")}
+                  />
+                </FormField>
+
+                <FormField label="Jumlah Kamar Tersedia" icon={Hash} error={errors.total_rooms}>
+                  <input
+                    type="number"
+                    name="total_rooms"
+                    value={form.total_rooms}
+                    onChange={handleChange}
+                    placeholder="10"
+                    className={inputClass("total_rooms")}
+                  />
+                </FormField>
+              </div>
+            </div>
+
+            {/* Seksi 3: Deskripsi */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 space-y-4">
+              <FormField label="Deskripsi Kamar & Fasilitas" icon={FileText} error={errors.description}>
+                <textarea
+                  name="description"
+                  value={form.description}
                   onChange={handleChange}
-                  min="1"
-                  placeholder="10"
-                  className={inputClass("total_rooms")}
+                  rows={5}
+                  placeholder="Jelaskan fasilitas seperti AC, WiFi, ukuran kasur, balkon, dll..."
+                  className={`${inputClass("description")} resize-none`}
                 />
               </FormField>
             </div>
           </div>
 
-          {/* Card 3 – Media & Deskripsi */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 space-y-5">
-            <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider pb-1 border-b border-slate-100">
-              Media & Deskripsi
-            </h2>
+          {/* Kolom Kanan: Media & Actions */}
+          <div className="space-y-6">
+            {/* Card Media Preview */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-5">
+              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                <ImageIcon size={16} className="text-indigo-500" />
+                Media Visual
+              </h3>
+              
+              <div className="relative group aspect-video bg-slate-100 rounded-xl overflow-hidden border-2 border-dashed border-slate-200 flex items-center justify-center">
+                {form.image_url ? (
+                  <img
+                    src={form.image_url}
+                    alt="preview"
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    onError={(e) => (e.target.src = "https://placehold.co/600x400?text=URL+Gambar+Salah")}
+                  />
+                ) : (
+                  <div className="text-center p-4">
+                    <ImagePlus size={32} className="mx-auto text-slate-300 mb-2" />
+                    <p className="text-[10px] text-slate-400">Preview gambar muncul di sini</p>
+                  </div>
+                )}
+              </div>
 
-            <FormField label="URL Gambar" icon={ImageIcon} error={errors.image_url}>
-              <input
-                type="url"
-                name="image_url"
-                value={form.image_url}
-                onChange={handleChange}
-                placeholder="https://..."
-                className={inputClass("image_url")}
-              />
-              {form.image_url && (
-                <img
-                  src={form.image_url}
-                  alt="preview"
-                  className="mt-3 w-full h-40 object-cover rounded-xl border border-slate-200"
-                  onError={(e) => (e.target.style.display = "none")}
+              <FormField label="URL Foto Kamar" icon={ImageIcon} error={errors.image_url}>
+                <input
+                  type="url"
+                  name="image_url"
+                  value={form.image_url}
+                  onChange={handleChange}
+                  placeholder="https://image-link.com/photo.jpg"
+                  className={inputClass("image_url")}
                 />
-              )}
-            </FormField>
+              </FormField>
+            </div>
 
-            <FormField label="Deskripsi" icon={FileText} error={errors.description}>
-              <textarea
-                name="description"
-                value={form.description}
-                onChange={handleChange}
-                rows={4}
-                placeholder="Tuliskan fasilitas dan keunggulan kamar..."
-                className={`${inputClass("description")} resize-none`}
-              />
-            </FormField>
-          </div>
-
-          {/* Actions */}
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => navigate("/admin/rooms")}
-              className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-medium hover:bg-slate-50 transition text-sm"
-            >
-              Batal
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white font-medium shadow-sm shadow-indigo-200 transition text-sm"
-            >
-              {loading ? (
-                <>
-                  <Loader2 size={15} className="animate-spin" />
-                  Menyimpan...
-                </>
-              ) : (
-                <>
-                  <Save size={15} />
-                  Simpan Kamar
-                </>
-              )}
-            </button>
+            {/* Sticky Actions Button */}
+            <div className="bg-slate-900 rounded-2xl p-6 shadow-lg shadow-indigo-100 space-y-3">
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-white font-bold transition-all shadow-md active:scale-95"
+              >
+                {loading ? (
+                  <Loader2 size={18} className="animate-spin" />
+                ) : (
+                  <Save size={18} />
+                )}
+                {loading ? "Memproses..." : "Simpan Kamar"}
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => navigate("/admin/rooms")}
+                className="w-full px-6 py-3 rounded-xl border border-slate-700 text-slate-400 font-medium hover:bg-slate-800 hover:text-white transition-all text-sm"
+              >
+                Batalkan
+              </button>
+            </div>
           </div>
         </form>
-      </div>
-    </MainLayout>
+      </main>
+    </div>
   );
 }
 

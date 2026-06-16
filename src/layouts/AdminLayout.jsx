@@ -2,7 +2,7 @@ import { Suspense, useState } from "react";
 import { Link, useLocation, Outlet, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Hotel, DoorOpen, UtensilsCrossed,
-  Armchair, CalendarCheck, CalendarClock, Search,
+  Armchair, CalendarCheck, CalendarClock,
   LogOut, Menu, X,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
@@ -184,34 +184,48 @@ function SidebarContent({ onNavClick, onLogoutClick }) {
 }
 
 // ─── Header ───────────────────────────────────────────────────────────────────
+// ─── Header ───────────────────────────────────────────────────────────────────
 function Header({ onMenuClick }) {
   const { user } = useAuth();
 
+  // Mendapatkan inisial nama untuk avatar
   const initials = user?.name
     ? user.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
     : "AD";
 
+  // Mendapatkan tanggal hari ini dengan format lokal Indonesia (Contoh: Selasa, 16 Juni 2026)
+  const todayFormatted = new Date().toLocaleDateString("id-ID", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
   return (
     <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 sm:px-6 shrink-0">
-      <div className="flex items-center gap-3">
+      {/* Sisi Kiri Header: Menu Mobile & Greet Info */}
+      <div className="flex items-center gap-4">
         <button
           onClick={onMenuClick}
           className="lg:hidden w-9 h-9 flex items-center justify-center rounded-lg hover:bg-slate-100 transition-colors text-slate-600"
         >
           <Menu size={20} />
         </button>
-        <div className="hidden sm:flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 w-56 md:w-64">
-          <Search size={15} className="text-slate-400 shrink-0" />
-          <input
-            type="text"
-            placeholder="Cari booking, tamu, kamar..."
-            className="bg-transparent text-sm text-slate-600 placeholder-slate-400 outline-none w-full"
-          />
+
+        {/* Pengganti Search Bar: Greeting & Sistem Date info */}
+        <div className="hidden sm:block">
+          <h2 className="text-sm font-semibold text-slate-800 leading-tight">
+            Selamat datang kembali, {user?.name?.split(" ")[0] || "Admin"}!
+          </h2>
+          <p className="text-xs text-slate-400 mt-0.5 font-medium">
+            {todayFormatted}
+          </p>
         </div>
       </div>
 
+      {/* Sisi Kanan Header: User Profile */}
       <div className="flex items-center gap-2.5 select-none">
-        <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-white text-xs font-semibold shrink-0">
+        <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-white text-xs font-semibold shrink-0 shadow-sm">
           {initials}
         </div>
         <div className="text-sm hidden sm:block">
@@ -222,7 +236,6 @@ function Header({ onMenuClick }) {
     </header>
   );
 }
-
 // ─── AdminLayout ──────────────────────────────────────────────────────────────
 function AdminLayout() {
   const [sidebarOpen,   setSidebarOpen]   = useState(false);

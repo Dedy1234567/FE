@@ -13,9 +13,11 @@ export const getMyRestaurantBookings = () => {
   );
 };
 
-export const getAllRestaurantBookings = () => {
-    return api.get("/restaurant-bookings");
-  };
+export const getAllRestaurantBookings = async ({ page, limit, search, status }) => {
+  return api.get(`/restaurant-bookings`, {
+    params: { page, limit, search, status }
+  });
+};
 
 export const cancelRestaurantBooking = (id) => {
     return api.put(
