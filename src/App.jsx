@@ -7,7 +7,7 @@ import AdminRoute  from "./components/AdminRoute";
 import AdminLayout from "./layouts/AdminLayout";
 
 // ── Halaman publik (Home dibuat lazy, sisanya tetap import langsung) ───────────
-const Home            = lazy(() => import("./pages/home")); // Diubah menjadi lazy untuk alur Register -> Home
+const Home            = lazy(() => import("./pages/Home")); // Diubah menjadi lazy untuk alur Register -> Home
 import Login          from "./auth/Login";
 import Register       from "./auth/Register";
 import NotFound       from "./pages/NotFound";
