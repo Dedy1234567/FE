@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { CheckCircle2, X } from "lucide-react"; // Ditambahkan untuk ikon modal
 
 // Mengimpor service yang dibutuhkan
 import {
@@ -13,6 +14,7 @@ function EditRoom() {
 
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false); // State Pop-up Sukses
   const [formData, setFormData] = useState({
     room_name: "",
     price: "",
@@ -60,14 +62,18 @@ function EditRoom() {
     setIsSubmitting(true);
     try {
       await updateRoom(id, formData);
-      alert("Room berhasil diupdate");
-      navigate("/admin/rooms");
+      setShowSuccessModal(true); // Memicu pop-up aktif saat sukses update
     } catch (error) {
       console.error(error);
       alert(error.response?.data?.message || "Gagal update room");
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleCloseModal = () => {
+    setShowSuccessModal(false);
+    navigate("/admin/rooms"); // Redirect ke daftar kamar setelah modal ditutup
   };
 
   if (loading) {
@@ -80,7 +86,7 @@ function EditRoom() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
+    <div className="mx-auto max-w-3xl px-4 py-8 relative">
       {/* Header Section */}
       <div className="mb-8">
         <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 sm:text-4xl">
@@ -240,6 +246,46 @@ function EditRoom() {
           </div>
         </form>
       </div>
+
+      {/* MODAL POP-UP SUKSES EDIT */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm transition-opacity">
+          <div className="relative w-full max-w-sm transform overflow-hidden rounded-2xl bg-white p-6 text-center shadow-2xl border border-gray-100 transition-all">
+            
+            {/* Tombol X Pojok Kanan Atas */}
+            <button 
+              type="button"
+              onClick={handleCloseModal}
+              className="absolute right-4 top-4 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X size={20} />
+            </button>
+
+            {/* Konten Pop-up */}
+            <div className="mt-2">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-50 text-blue-600 mb-4 animate-bounce">
+                <CheckCircle2 size={38} />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900">Perubahan Disimpan!</h3>
+              <p className="mt-2 text-sm text-gray-500">
+                Data untuk kamar <strong>{formData.room_name || "Tipe Kamar"}</strong> telah sukses diperbarui di dalam sistem.
+              </p>
+            </div>
+
+            {/* Tombol Konfirmasi */}
+            <div className="mt-6">
+              <button
+                type="button"
+                onClick={handleCloseModal}
+                className="w-full inline-flex justify-center rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-md shadow-blue-600/10 hover:bg-blue-700 focus:outline-none transition-colors"
+              >
+                Kembali ke Daftar Kamar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

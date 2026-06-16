@@ -12,6 +12,8 @@ import {
   Save,
   Loader2,
   ImagePlus,
+  CheckCircle2, // Ikon untuk pop-up sukses
+  X,            // Ikon silang untuk tutup pop-up
 } from "lucide-react";
 
 import { createRoom } from "../../services/roomService";
@@ -37,6 +39,7 @@ function CreateRoom() {
   const [loading, setLoading] = useState(false);
   const [fetchingHotels, setFetchingHotels] = useState(true);
   const [errors, setErrors] = useState({});
+  const [showSuccessModal, setShowSuccessModal] = useState(false); // State Pop-up Sukses
 
   const [form, setForm] = useState({
     hotel_id: "",
@@ -89,11 +92,17 @@ function CreateRoom() {
     try {
       setLoading(true);
       await createRoom(form);
-      navigate("/admin/rooms");
+      setShowSuccessModal(true); // Aktifkan pop-up kustom saat sukses api call
     } catch (error) {
       console.log(error);
+    } finally {
       setLoading(false);
     }
+  };
+
+  const handleCloseModal = () => {
+    setShowSuccessModal(false);
+    navigate("/admin/rooms"); // Redirect ke daftar inventori kamar setelah ditutup
   };
 
   const inputClass = (field) =>
@@ -104,7 +113,7 @@ function CreateRoom() {
     }`;
 
   return (
-    <div className="flex min-h-screen bg-[#f8fafc]">
+    <div className="flex min-h-screen bg-[#f8fafc] relative">
       {/* Jika ada Sidebar, un-comment di bawah ini */}
       {/* <AdminSidebar /> */}
 
@@ -290,6 +299,45 @@ function CreateRoom() {
           </div>
         </form>
       </main>
+
+      {/* MODAL POP-UP SUKSES MENAMBAHKAN KAMAR */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm transition-opacity">
+          <div className="relative w-full max-w-sm transform overflow-hidden rounded-2xl bg-white p-6 text-center shadow-xl border border-slate-100 transition-all">
+            
+            {/* Tombol X Pojok Kanan Atas */}
+            <button 
+              type="button"
+              onClick={handleCloseModal}
+              className="absolute right-4 top-4 text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              <X size={20} />
+            </button>
+
+            {/* Konten Pop-up */}
+            <div className="mt-2">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-indigo-50 text-indigo-600 mb-4 animate-pulse">
+                <CheckCircle2 size={38} />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900">Kamar Berhasil Disimpan!</h3>
+              <p className="mt-2 text-sm text-slate-500">
+                Tipe kamar <strong>{form.room_name || "Baru"}</strong> telah sukses didaftarkan sebanyak <strong>{form.total_rooms} unit</strong> ke dalam sistem.
+              </p>
+            </div>
+
+            {/* Tombol Konfirmasi */}
+            <div className="mt-6">
+              <button
+                type="button"
+                onClick={handleCloseModal}
+                className="w-full inline-flex justify-center rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-md shadow-indigo-600/10 hover:bg-indigo-700 focus:outline-none transition-colors"
+              >
+                Kembali ke Inventori
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

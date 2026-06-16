@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { CheckCircle2, X } from "lucide-react"; // Mengimpor ikon untuk pop-up sukses
 
 // Mengimpor service yang dibutuhkan
 import {
@@ -13,6 +14,7 @@ function EditHotel() {
 
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false); // State Pop-up Sukses
   const [form, setForm] = useState({
     name: "",
     city: "",
@@ -53,14 +55,18 @@ function EditHotel() {
     setIsSubmitting(true);
     try {
       await updateHotel(id, form);
-      alert("Hotel berhasil diupdate");
-      navigate("/admin/hotels");
+      setShowSuccessModal(true); // Membuka pop-up kustom saat berhasil update
     } catch (error) {
       console.error(error);
       alert(error.response?.data?.message || "Gagal update hotel");
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleCloseModal = () => {
+    setShowSuccessModal(false);
+    navigate("/admin/hotels"); // Redirect ke daftar hotel setelah modal ditutup
   };
 
   if (loading) {
@@ -73,7 +79,7 @@ function EditHotel() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
+    <div className="mx-auto max-w-3xl px-4 py-8 relative">
       {/* Header Section */}
       <div className="mb-8">
         <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 sm:text-4xl">
@@ -194,7 +200,7 @@ function EditHotel() {
               value={form.description}
               onChange={handleChange}
               rows="4"
-              placeholder="Tuliskan deskripsi lengkap fasilitas dan keunggulan hotel..."
+              placeholder="Tuliskan deskripsi lengkap fasilitas and keunggulan hotel..."
               className="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-gray-900 transition focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-100"
               required
             />
@@ -230,6 +236,46 @@ function EditHotel() {
           </div>
         </form>
       </div>
+
+      {/* MODAL POP-UP SUKSES UPDATE */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm transition-opacity">
+          <div className="relative w-full max-w-sm transform overflow-hidden rounded-2xl bg-white p-6 text-center shadow-2xl border border-gray-100 transition-all">
+            
+            {/* Tombol Close silang di pojok kanan atas */}
+            <button 
+              type="button"
+              onClick={handleCloseModal}
+              className="absolute right-4 top-4 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X size={20} />
+            </button>
+
+            {/* Konten Utama */}
+            <div className="mt-2">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-50 text-blue-600 mb-4 animate-bounce">
+                <CheckCircle2 size={38} />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900">Berhasil Diperbarui!</h3>
+              <p className="mt-2 text-sm text-gray-500">
+                Data untuk <strong>{form.name || "Hotel"}</strong> telah berhasil diperbarui dan disimpan dalam sistem.
+              </p>
+            </div>
+
+            {/* Tombol Aksi */}
+            <div className="mt-6">
+              <button
+                type="button"
+                onClick={handleCloseModal}
+                className="w-full inline-flex justify-center rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-md shadow-blue-600/10 hover:bg-blue-700 focus:outline-none transition-colors"
+              >
+                Kembali ke Daftar Hotel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

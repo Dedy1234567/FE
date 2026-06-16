@@ -10,6 +10,7 @@ function BookTable() {
 
   const [table, setTable] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showAuthModal, setShowAuthModal] = useState(false); // State untuk mengontrol pop-up login
   const [form, setForm] = useState({
     reservation_date: "",
     reservation_time: "",
@@ -51,7 +52,12 @@ function BookTable() {
       alert("Reservasi berhasil");
       navigate("/my-restaurant-bookings");
     } catch (error) {
-      alert(error.response?.data?.message || "Gagal reservasi");
+      // Deteksi jika server merespon dengan status 401 (Unauthorized)
+      if (error.response?.status === 401) {
+        setShowAuthModal(true);
+      } else {
+        alert(error.response?.data?.message || "Gagal reservasi");
+      }
     }
   };
 
@@ -85,7 +91,7 @@ function BookTable() {
           <p className="text-sm text-gray-500 mt-1">Silakan isi formulir di bawah untuk reservasi</p>
         </div>
 
-        {/* Info Meja (Minimalis) */}
+        {/* Info Meja */}
         <div className="bg-gray-50 border border-gray-100 rounded-lg p-4 mb-6 flex justify-between items-center">
           <div>
             <span className="text-xs font-semibold tracking-wider text-gray-400 uppercase">Nomor Meja</span>
@@ -151,6 +157,40 @@ function BookTable() {
           </button>
         </form>
       </div>
+
+      {/* POP-UP / MODAL BELUM LOGIN */}
+      {showAuthModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 text-center transform transition-all scale-100">
+            {/* Icon Gembok / Warning Minimalis */}
+            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-amber-50 mb-4">
+              <svg className="h-6 w-6 text-amber-600" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m0 0v3m0-3h3m-3 0H9m12-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Anda Belum Login</h3>
+            <p className="text-sm text-gray-500 mb-6">
+              Silakan login terlebih dahulu untuk melakukan reservasi meja di restoran kami.
+            </p>
+
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => navigate("/login")}
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm py-2.5 rounded-lg transition-colors"
+              >
+                Login Sekarang
+              </button>
+              <button
+                onClick={() => setShowAuthModal(false)}
+                className="w-full bg-gray-50 hover:bg-gray-100 text-gray-600 font-medium text-sm py-2.5 rounded-lg border border-gray-200 transition-colors"
+              >
+                Kembali
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </MainLayout>
   );
 }

@@ -113,7 +113,6 @@ function AdminHotelBookings() {
 
   // ⭐ IMPLEMENTASI USEMEMO: Menyimpan objek config agar tidak dialokasikan ulang di memori
   const STATUS_CONFIG = useMemo(() => ({
-    confirmed:  { label: "Confirmed",  bg: "bg-emerald-50", text: "text-emerald-600", border: "border-emerald-200", dot: "bg-emerald-400" },
     pending:    { label: "Pending",    bg: "bg-amber-50",   text: "text-amber-600",   border: "border-amber-200",   dot: "bg-amber-400"   },
     cancelled:  { label: "Cancelled", bg: "bg-slate-100",  text: "text-slate-500",   border: "border-slate-200",   dot: "bg-slate-400"   },
     checked_in: { label: "Checked In", bg: "bg-blue-50",    text: "text-blue-600",    border: "border-blue-200",    dot: "bg-blue-400"    },
@@ -253,7 +252,6 @@ function AdminHotelBookings() {
                 >
                   <option value="all">Semua Status</option>
                   <option value="pending">Pending</option>
-                  <option value="confirmed">Confirmed</option>
                   <option value="completed">Selesai</option>
                   <option value="cancelled">Dibatalkan</option>
                 </select>
@@ -363,7 +361,7 @@ function AdminHotelBookings() {
                       {/* Aksi */}
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-2">
-                          {(b.status === "confirmed" || b.status === "pending") && (
+                          {(b.status === "pending") && (
                             <button onClick={() => setModal({ type: "complete", id: b.id })}
                               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-100 text-xs font-semibold transition-colors whitespace-nowrap">
                               <CheckCircle2 size={11} /> Selesai

@@ -19,6 +19,15 @@ function EditRestaurantTable() {
     status: "available"
   });
 
+  // State untuk manajemen Pop-up / Modal
+  const [modal, setModal] = useState({
+    isOpen: false,
+    type: "success", // 'success' | 'error'
+    title: "",
+    message: "",
+    onClose: () => {}
+  });
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/immutability
     loadTable();
@@ -35,8 +44,13 @@ function EditRestaurantTable() {
       });
     } catch (error) {
       console.error(error);
-      alert("Meja tidak ditemukan");
-      navigate("/admin/restaurant-tables");
+      setModal({
+        isOpen: true,
+        type: "error",
+        title: "Gagal Memuat Data",
+        message: "Meja tidak ditemukan atau terjadi kesalahan server.",
+        onClose: () => navigate("/admin/restaurant-tables")
+      });
     } finally {
       setLoading(false);
     }
@@ -54,11 +68,23 @@ function EditRestaurantTable() {
     setIsSubmitting(true);
     try {
       await updateRestaurantTable(id, form);
-      alert("Meja berhasil diupdate");
-      navigate("/admin/restaurant-tables");
+      setModal({
+        isOpen: true,
+        type: "success",
+        title: "Berhasil!",
+        message: "Data meja restoran berhasil diperbarui.",
+        onClose: () => navigate("/admin/restaurant-tables")
+      });
     } catch (error) {
       console.error(error);
-      alert(error.response?.data?.message || "Gagal update meja");
+      const errorMsg = error.response?.data?.message || "Gagal mengupdate data meja.";
+      setModal({
+        isOpen: true,
+        type: "error",
+        title: "Update Gagal",
+        message: errorMsg,
+        onClose: () => setModal((prev) => ({ ...prev, isOpen: false }))
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -178,6 +204,54 @@ function EditRestaurantTable() {
           </div>
         </form>
       </div>
+
+      {/* --- POP-UP MODAL SECTION --- */}
+      {modal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-center align-middle shadow-2xl transition-all animate-scale-up">
+            
+            {/* Icon Status */}
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full mb-4">
+              {modal.type === "success" ? (
+                <div className="bg-green-100 p-3 rounded-full text-green-600">
+                  <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              ) : (
+                <div className="bg-red-100 p-3 rounded-full text-red-600">
+                  <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </div>
+              )}
+            </div>
+
+            {/* Title & Message */}
+            <h3 className="text-xl font-bold leading-6 text-gray-900 mb-2">
+              {modal.title}
+            </h3>
+            <p className="text-sm text-gray-500 mb-6">
+              {modal.message}
+            </p>
+
+            {/* Tombol OK / Aksi */}
+            <div>
+              <button
+                type="button"
+                onClick={modal.onClose}
+                className={`w-full inline-flex justify-center rounded-xl px-5 py-3 text-sm font-semibold text-white shadow-md transition focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                  modal.type === "success" 
+                    ? "bg-green-600 hover:bg-green-700 focus:ring-green-500" 
+                    : "bg-red-600 hover:bg-red-700 focus:ring-red-500"
+                }`}
+              >
+                Mengerti
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

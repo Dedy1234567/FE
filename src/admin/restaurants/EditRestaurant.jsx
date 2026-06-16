@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { CheckCircle, X } from "lucide-react"; 
 
-// Mengimpor service yang dibutuhkan
 import {
   getRestaurantById,
   updateRestaurant
@@ -13,38 +13,55 @@ function EditRestaurant() {
 
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false); 
+  
+  // 1. Daftarkan rating di initial state agar input terkontrol (controlled component)
   const [form, setForm] = useState({
     name: "",
     city: "",
     address: "",
     description: "",
-    image_url: ""
+    image_url: "",
+    rating: "" 
   });
 
+  // 2. Gunakan useEffect dengan benar tanpa memicu infinite loop atau melanggar rule
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/immutability
-    loadRestaurant();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    let isMounted = true;
 
-  const loadRestaurant = async () => {
-    try {
-      const response = await getRestaurantById(id);
-      setForm({
-        name: response.data.name || "",
-        city: response.data.city || "",
-        address: response.data.address || "",
-        description: response.data.description || "",
-        image_url: response.data.image_url || ""
-      });
-    } catch (error) {
-      console.error(error);
-      alert("Restaurant tidak ditemukan");
-      navigate("/admin/restaurants");
-    } finally {
-      setLoading(false);
-    }
-  };
+    const loadRestaurant = async () => {
+      try {
+        const response = await getRestaurantById(id);
+        
+        // Memastikan data yang didapat dari backend diekstrak dengan aman
+        if (response && response.data && isMounted) {
+          const data = response.data;
+          setForm({
+            name: data.name || "",
+            city: data.city || "",
+            address: data.address || "",
+            description: data.description || "",
+            image_url: data.image_url || "",
+            rating: data.rating !== undefined && data.rating !== null ? data.rating.toString() : ""
+          });
+        }
+      } catch (error) {
+        console.error("Gagal memuat data restoran:", error);
+        alert("Restaurant tidak ditemukan atau terjadi kesalahan server.");
+        navigate("/admin/restaurants");
+      } finally {
+        if (isMounted) {
+          setLoading(false); // Memastikan loading dimatikan di block finally
+        }
+      }
+    };
+
+    loadRestaurant();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [id, navigate]);
 
   const handleChange = (e) => {
     setForm({
@@ -57,15 +74,25 @@ function EditRestaurant() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      await updateRestaurant(id, form);
-      alert("Restaurant berhasil diupdate");
-      navigate("/admin/restaurants");
+      // 3. Konversi nilai rating ke tipe data Float/Number sebelum dikirim ke backend
+      const payload = {
+        ...form,
+        rating: form.rating ? parseFloat(form.rating) : 0
+      };
+
+      await updateRestaurant(id, payload);
+      setShowSuccessModal(true); 
     } catch (error) {
-      console.error(error);
+      console.error("Gagal update data:", error);
       alert(error.response?.data?.message || "Gagal update restaurant");
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleCloseModal = () => {
+    setShowSuccessModal(false);
+    navigate("/admin/restaurants"); 
   };
 
   if (loading) {
@@ -78,14 +105,14 @@ function EditRestaurant() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
+    <div className="mx-auto max-w-3xl px-4 py-8 relative">
       {/* Header Section */}
       <div className="mb-8">
         <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 sm:text-4xl">
           Edit Restaurant
         </h1>
         <p className="mt-2 text-sm text-gray-500">
-          Perbarui data restoran Anda seperti nama, lokasi kota, alamat fisik, dan kelola foto utama kuliner.
+          Perbarui data restoran Anda seperti nama, lokasi kota, alamat fisik, rating, dan kelola foto utama kuliner.
         </p>
       </div>
 
@@ -127,20 +154,42 @@ function EditRestaurant() {
             </div>
           </div>
 
-          {/* Alamat */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Alamat Lengkap
-            </label>
-            <input
-              type="text"
-              name="address"
-              value={form.address}
-              onChange={handleChange}
-              placeholder="Jl. Kuliner No. 88, Blok C..."
-              className="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-gray-900 transition focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-100"
-              required
-            />
+          {/* Mengubah layout agar Alamat dan Rating sejajar di desktop */}
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+            {/* Alamat Lengkap */}
+            <div className="sm:col-span-2">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Alamat Lengkap
+              </label>
+              <input
+                type="text"
+                name="address"
+                value={form.address}
+                onChange={handleChange}
+                placeholder="Jl. Kuliner No. 88, Blok C..."
+                className="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-gray-900 transition focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-100"
+                required
+              />
+            </div>
+
+            {/* INPUT RATING (Baru dimasukkan) */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Rating Restoran
+              </label>
+              <input
+                type="number"
+                name="rating"
+                value={form.rating}
+                onChange={handleChange}
+                placeholder="Contoh: 4.5"
+                step="0.1"
+                min="0"
+                max="5"
+                className="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-gray-900 transition focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-100"
+                required
+              />
+            </div>
           </div>
 
           {/* URL Gambar */}
@@ -214,6 +263,41 @@ function EditRestaurant() {
           </div>
         </form>
       </div>
+
+      {/* MODAL POP-UP SUKSES */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="relative w-full max-w-sm transform overflow-hidden rounded-2xl bg-white p-6 text-center shadow-2xl transition-all border border-gray-100">
+            
+            <button 
+              onClick={handleCloseModal}
+              className="absolute right-4 top-4 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X size={20} />
+            </button>
+
+            <div className="mt-2">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 mb-4">
+                <CheckCircle size={36} />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900">Berhasil Diperbarui!</h3>
+              <p className="mt-2 text-sm text-gray-500">
+                Data restoran <strong>{form.name}</strong> telah berhasil diperbarui di dalam sistem database.
+              </p>
+            </div>
+
+            <div className="mt-6">
+              <button
+                type="button"
+                onClick={handleCloseModal}
+                className="w-full inline-flex justify-center rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-600/20 hover:bg-emerald-700 focus:outline-none transition-colors"
+              >
+                Oke, Mengerti
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

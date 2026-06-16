@@ -72,8 +72,8 @@ function _RoomCard({ room }) {
       <div className="p-5">
         <div className="grid grid-cols-3 gap-3">
           {[
-            { icon: Users,                   label: "Kapasitas",    value: `${room.capacity} tamu`,          color: "text-indigo-500", bg: "bg-indigo-50"  },
-            { icon: MdOutlineBedroomParent,  label: "Unit Tersedia",value: `${room.available_rooms} kamar`,  color: "text-teal-500",   bg: "bg-teal-50"    },
+            { icon: Users,                  label: "Kapasitas",    value: `${room.capacity} tamu`,          color: "text-indigo-500", bg: "bg-indigo-50"  },
+            { icon: MdOutlineBedroomParent,  label: "Unit Tersedia",value: `${room.available_rooms} kamar`,   color: "text-teal-500",   bg: "bg-teal-50"    },
             { icon: MdOutlineHotel,          label: "Hotel",        value: room.hotel_name || "—",           color: "text-violet-500", bg: "bg-violet-50"  },
           ].map(({ icon: Icon, label, value, color, bg }) => (
             <div key={label} className={`${bg} rounded-xl p-3 text-center`}>
@@ -271,13 +271,14 @@ function HotelBooking() {
   const navigate    = useNavigate();
   const { user }    = useAuth();
 
-  const [room,     setRoom]     = useState(null);
+  const [room,      setRoom]     = useState(null);
   const [checkIn,  setCheckIn]  = useState("");
   const [checkOut, setCheckOut] = useState("");
   const [loading,  setLoading]  = useState(false);
   const [pageLoad, setPageLoad] = useState(true);
   const [error,    setError]    = useState(null);
   const [success,  setSuccess]  = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false); // State baru untuk pop-up login
 
   useEffect(() => {
     async function loadRoom() {
@@ -294,13 +295,19 @@ function HotelBooking() {
   }, [roomId]);
 
   const handleBack = () => {
-    // kembali ke HotelDetail berdasarkan hotel_id dari room
     if (room?.hotel_id) navigate(`/hotels/${room.hotel_id}`);
     else navigate(-1);
   };
 
   const handleBooking = async () => {
     setError(null);
+
+    // 1. Cek dari sisi front-end terlebih dahulu apakah user ada di AuthContext
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
+
     if (!checkIn || !checkOut) {
       setError("Pilih tanggal check-in dan check-out terlebih dahulu.");
       return;
@@ -320,7 +327,7 @@ function HotelBooking() {
         user_id:      user.id,
         room_id:      room.id,
         check_in:     checkIn,
-        check_out:    checkOut,
+        check_out:     checkOut,
         total_nights: totalNights,
         total_price:  totalPrice,
       });
@@ -328,7 +335,12 @@ function HotelBooking() {
       setTimeout(() => navigate("/my-bookings"), 1500);
     } catch (err) {
       console.error(err);
-      setError("Booking gagal. Silakan coba lagi.");
+      // 2. Jika lolos dari front-end tapi backend merespon 401 Unauthorized
+      if (err.response?.status === 401) {
+        setShowAuthModal(true);
+      } else {
+        setError(err.response?.data?.message || "Booking gagal. Silakan coba lagi.");
+      }
     } finally {
       setLoading(false);
     }
@@ -400,8 +412,39 @@ function HotelBooking() {
             </Suspense>
           </div>
         </div>
-
       </div>
+
+      {/* ── POP-UP / MODAL BELUM LOGIN ── */}
+      {showAuthModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 text-center border border-slate-100">
+            {/* Warning Icon Ringkas */}
+            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-amber-50 mb-4">
+              <AlertCircle size={24} className="text-amber-600" />
+            </div>
+            
+            <h3 className="text-lg font-bold text-slate-800 mb-2">Anda Belum Login</h3>
+            <p className="text-xs text-slate-500 mb-6 leading-relaxed">
+              Silakan login terlebih dahulu menggunakan akun Anda untuk melanjutkan proses booking kamar ini.
+            </p>
+
+            <div className="space-y-2">
+              <button
+                onClick={() => navigate("/login")}
+                className="w-full bg-linear-to-r from-indigo-500 to-violet-500 hover:from-indigo-600 hover:to-violet-600 text-white font-semibold text-sm py-2.5 rounded-xl shadow-sm shadow-indigo-100 transition-colors"
+              >
+                Login Sekarang
+              </button>
+              <button
+                onClick={() => setShowAuthModal(false)}
+                className="w-full bg-slate-50 hover:bg-slate-100 text-slate-600 font-medium text-sm py-2.5 rounded-xl border border-slate-200 transition-colors"
+              >
+                Kembali
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </MainLayout>
   );
 }
