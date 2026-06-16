@@ -313,7 +313,7 @@ function AdminHotelBookings() {
                       {/* Tamu */}
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-teal-400 to-indigo-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                          <div className="w-8 h-8 rounded-full bg-linear-to-br from-teal-400 to-indigo-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
                             {b.fullname?.[0]?.toUpperCase() ?? "?"}
                           </div>
                           <div>
